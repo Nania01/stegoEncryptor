@@ -10,7 +10,7 @@ class StegoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("StegoPic v3.0")
+        self.title("StegoPic v5.0")
         self.geometry("600x650")
         self.resizable(False, False)
 
@@ -60,9 +60,18 @@ class StegoApp(ctk.CTk):
         self.btn_run_enc.pack(pady=10)
 
         self.result_frame = ctk.CTkFrame(frame, fg_color="transparent")
+
         self.lbl_key_info = ctk.CTkLabel(self.result_frame, text="✅ Готово! Ваш ключ:", font=("Arial", 14, "bold"),
                                          text_color="#228B22")
-        self.entry_key_result = ctk.CTkEntry(self.result_frame, width=300, justify="center", font=("Consolas", 14))
+
+        self.key_container = ctk.CTkFrame(self.result_frame, fg_color="transparent")
+
+        self.entry_key_result = ctk.CTkEntry(self.key_container, width=230, justify="center", font=("Consolas", 13))
+        self.entry_key_result.pack(side="left", padx=5)
+
+        self.btn_copy = ctk.CTkButton(self.key_container, text="Копировать", width=80,
+                                      command=self.copy_key_to_clipboard)
+        self.btn_copy.pack(side="left")
 
     def setup_decrypt_tab(self):
         frame = self.tab_decrypt
@@ -73,16 +82,19 @@ class StegoApp(ctk.CTk):
         self.lbl_file_dec = ctk.CTkLabel(frame, text="Файл не выбран", text_color="gray", font=("Arial", 12))
         self.lbl_file_dec.pack(pady=5)
 
-        self.lbl_method_dec = ctk.CTkLabel(frame, text="Каким методом шифровали?", font=("Arial", 12, "bold"))
-        self.lbl_method_dec.pack(pady=(10, 0))
+        self.lbl_key_dec = ctk.CTkLabel(frame, text="Вставьте полученный ключ:", font=("Arial", 12, "bold"))
+        self.lbl_key_dec.pack(pady=(20, 0))
 
-        self.combo_method_dec = ctk.CTkComboBox(frame,
-                                                values=["LSB (Red)", "LSB (Green)", "LSB (Blue)", "EOF (End of File)"],
-                                                width=250, state="readonly")
-        self.combo_method_dec.pack(pady=5)
+        self.key_input_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        self.key_input_frame.pack(pady=10)
 
-        self.entry_key_input = ctk.CTkEntry(frame, width=300, placeholder_text="Вставьте ключ сюда", justify="center")
-        self.entry_key_input.pack(pady=20)
+        self.entry_key_input = ctk.CTkEntry(self.key_input_frame, width=230, placeholder_text="Пример: r:MTU5...",
+                                            justify="center")
+        self.entry_key_input.pack(side="left", padx=5)
+
+        self.btn_paste = ctk.CTkButton(self.key_input_frame, text="Вставить", width=80,
+                                       command=self.paste_key_from_clipboard)
+        self.btn_paste.pack(side="left")
 
         self.btn_run_dec = ctk.CTkButton(frame, text="РАСШИФРОВАТЬ", fg_color="#B22222", hover_color="#DC143C",
                                          width=200, height=40, font=("Arial", 14, "bold"), command=self.run_decrypt)
@@ -113,6 +125,23 @@ class StegoApp(ctk.CTk):
             self.lbl_file_dec.configure(text=path.split("/")[-1])
             self.current_img_path_dec = path
 
+    def copy_key_to_clipboard(self):
+        key = self.entry_key_result.get()
+        if key:
+            self.clipboard_clear()
+            self.clipboard_append(key)
+            self.update()
+            self.btn_copy.configure(text="Скопировано!")
+            self.after(2000, lambda: self.btn_copy.configure(text="Копировать"))
+
+    def paste_key_from_clipboard(self):
+        try:
+            text = self.clipboard_get()
+            self.entry_key_input.delete(0, "end")
+            self.entry_key_input.insert(0, text)
+        except:
+            pass
+
     def run_encrypt(self):
         if not self.current_img_path_enc: return
 
@@ -127,7 +156,8 @@ class StegoApp(ctk.CTk):
 
             self.result_frame.pack(pady=10, fill="x")
             self.lbl_key_info.pack(pady=(0, 5))
-            self.entry_key_result.pack(pady=5)
+            self.key_container.pack(pady=5)
+
             self.entry_key_result.delete(0, "end")
 
             if key:
@@ -139,9 +169,7 @@ class StegoApp(ctk.CTk):
         if not self.current_img_path_dec: return
 
         key = self.entry_key_input.get()
-        method = self.combo_method_dec.get()
-
-        result_text = engine.decrypt(self.current_img_path_dec, key, method)
+        result_text = engine.decrypt(self.current_img_path_dec, key)
 
         self.text_result.delete("0.0", "end")
         self.text_result.insert("0.0", result_text)
