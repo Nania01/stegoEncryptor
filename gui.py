@@ -10,15 +10,15 @@ class StegoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("StegoPic")
-        self.geometry("600x600")
+        self.title("StegoPic v3.0")
+        self.geometry("600x650")
         self.resizable(False, False)
 
         self.current_img_path_enc = ""
         self.current_img_path_dec = ""
         self.placeholder_text = "Введите текст, который хотите зашифровать..."
 
-        self.tabview = ctk.CTkTabview(self, width=560, height=560)
+        self.tabview = ctk.CTkTabview(self, width=560, height=600)
         self.tabview.pack(padx=20, pady=20)
 
         self.tab_encrypt = self.tabview.add("Зашифровать")
@@ -37,8 +37,17 @@ class StegoApp(ctk.CTk):
         self.lbl_file_enc = ctk.CTkLabel(frame, text="Файл не выбран", text_color="gray", font=("Arial", 12))
         self.lbl_file_enc.pack(pady=5)
 
-        self.entry_text = ctk.CTkTextbox(frame, width=450, height=150, border_width=2, corner_radius=10)
-        self.entry_text.pack(pady=20)
+        self.lbl_method_enc = ctk.CTkLabel(frame, text="Выберите метод шифрования:", font=("Arial", 12, "bold"))
+        self.lbl_method_enc.pack(pady=(10, 0))
+
+        self.combo_method_enc = ctk.CTkComboBox(frame,
+                                                values=["LSB (Red)", "LSB (Green)", "LSB (Blue)", "EOF (End of File)"],
+                                                width=250, state="readonly")
+        self.combo_method_enc.pack(pady=5)
+        self.combo_method_enc.set("LSB (Red)")
+
+        self.entry_text = ctk.CTkTextbox(frame, width=450, height=120, border_width=2, corner_radius=10)
+        self.entry_text.pack(pady=15)
 
         self.entry_text.insert("0.0", self.placeholder_text)
         self.entry_text.configure(text_color="gray", font=("Arial", 14, "italic"))
@@ -48,10 +57,9 @@ class StegoApp(ctk.CTk):
 
         self.btn_run_enc = ctk.CTkButton(frame, text="ЗАШИФРОВАТЬ", fg_color="#228B22", hover_color="#3CB371",
                                          width=200, height=40, font=("Arial", 14, "bold"), command=self.run_encrypt)
-        self.btn_run_enc.pack(pady=20)
+        self.btn_run_enc.pack(pady=10)
 
         self.result_frame = ctk.CTkFrame(frame, fg_color="transparent")
-
         self.lbl_key_info = ctk.CTkLabel(self.result_frame, text="✅ Готово! Ваш ключ:", font=("Arial", 14, "bold"),
                                          text_color="#228B22")
         self.entry_key_result = ctk.CTkEntry(self.result_frame, width=300, justify="center", font=("Consolas", 14))
@@ -65,6 +73,14 @@ class StegoApp(ctk.CTk):
         self.lbl_file_dec = ctk.CTkLabel(frame, text="Файл не выбран", text_color="gray", font=("Arial", 12))
         self.lbl_file_dec.pack(pady=5)
 
+        self.lbl_method_dec = ctk.CTkLabel(frame, text="Каким методом шифровали?", font=("Arial", 12, "bold"))
+        self.lbl_method_dec.pack(pady=(10, 0))
+
+        self.combo_method_dec = ctk.CTkComboBox(frame,
+                                                values=["LSB (Red)", "LSB (Green)", "LSB (Blue)", "EOF (End of File)"],
+                                                width=250, state="readonly")
+        self.combo_method_dec.pack(pady=5)
+
         self.entry_key_input = ctk.CTkEntry(frame, width=300, placeholder_text="Вставьте ключ сюда", justify="center")
         self.entry_key_input.pack(pady=20)
 
@@ -72,7 +88,7 @@ class StegoApp(ctk.CTk):
                                          width=200, height=40, font=("Arial", 14, "bold"), command=self.run_decrypt)
         self.btn_run_dec.pack(pady=20)
 
-        self.text_result = ctk.CTkTextbox(frame, width=450, height=150, corner_radius=10)
+        self.text_result = ctk.CTkTextbox(frame, width=450, height=120, corner_radius=10)
         self.text_result.pack(pady=10)
 
     def on_text_focus_in(self, event):
@@ -98,34 +114,34 @@ class StegoApp(ctk.CTk):
             self.current_img_path_dec = path
 
     def run_encrypt(self):
-        if not self.current_img_path_enc:
-            return
+        if not self.current_img_path_enc: return
 
         text = self.entry_text.get("0.0", "end-1c")
-        if text == self.placeholder_text or not text.strip():
-            return
+        if text == self.placeholder_text or not text.strip(): return
 
+        method = self.combo_method_enc.get()
         save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG file", "*.png")])
 
         if save_path:
-            key = engine.save_encrypted_image(self.current_img_path_enc, text, save_path)
+            key = engine.encrypt(self.current_img_path_enc, text, save_path, method)
 
             self.result_frame.pack(pady=10, fill="x")
             self.lbl_key_info.pack(pady=(0, 5))
             self.entry_key_result.pack(pady=5)
-
             self.entry_key_result.delete(0, "end")
+
             if key:
                 self.entry_key_result.insert(0, key)
             else:
-                self.entry_key_result.insert(0, "Ошибка размера")
+                self.entry_key_result.insert(0, "Ошибка")
 
     def run_decrypt(self):
-        if not self.current_img_path_dec:
-            return
+        if not self.current_img_path_dec: return
 
         key = self.entry_key_input.get()
-        result_text = engine.get_decrypted_text(self.current_img_path_dec, key)
+        method = self.combo_method_dec.get()
+
+        result_text = engine.decrypt(self.current_img_path_dec, key, method)
 
         self.text_result.delete("0.0", "end")
         self.text_result.insert("0.0", result_text)
