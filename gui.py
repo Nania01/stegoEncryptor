@@ -5,7 +5,6 @@ import engine
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-
 class StegoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -41,17 +40,20 @@ class StegoApp(ctk.CTk):
         self.lbl_method_enc.pack(pady=(10, 0))
 
         self.combo_method_enc = ctk.CTkComboBox(frame,
-                                                values=["LSB (Red)", "LSB (Green)", "LSB (Blue)", "EOF (End of File)"],
-                                                width=250, state="readonly")
+            values=["LSB (Red)", "LSB (Green)", "LSB (Blue)", "LSB (Multi)", "EOF (Скрытие в конце)"],
+            width=250, state="readonly")
         self.combo_method_enc.pack(pady=5)
-        self.combo_method_enc.set("LSB (Red)")
+        self.combo_method_enc.set("LSB (Multi)")
 
-        self.entry_text = ctk.CTkTextbox(frame, width=450, height=120, border_width=2, corner_radius=10)
+        self.lbl_pass_enc = ctk.CTkLabel(frame, text="Придумайте пароль (обязательно):", font=("Arial", 12, "bold"))
+        self.lbl_pass_enc.pack(pady=(10, 0))
+        self.entry_pass_enc = ctk.CTkEntry(frame, width=250, placeholder_text="Ваш секретный пароль", show="*")
+        self.entry_pass_enc.pack(pady=5)
+
+        self.entry_text = ctk.CTkTextbox(frame, width=450, height=100, border_width=2, corner_radius=10)
         self.entry_text.pack(pady=15)
-
         self.entry_text.insert("0.0", self.placeholder_text)
         self.entry_text.configure(text_color="gray", font=("Arial", 14, "italic"))
-
         self.entry_text.bind("<FocusIn>", self.on_text_focus_in)
         self.entry_text.bind("<FocusOut>", self.on_text_focus_out)
 
@@ -65,7 +67,6 @@ class StegoApp(ctk.CTk):
                                          text_color="#228B22")
 
         self.key_container = ctk.CTkFrame(self.result_frame, fg_color="transparent")
-
         self.entry_key_result = ctk.CTkEntry(self.key_container, width=230, justify="center", font=("Consolas", 13))
         self.entry_key_result.pack(side="left", padx=5)
 
@@ -87,14 +88,17 @@ class StegoApp(ctk.CTk):
 
         self.key_input_frame = ctk.CTkFrame(frame, fg_color="transparent")
         self.key_input_frame.pack(pady=10)
-
-        self.entry_key_input = ctk.CTkEntry(self.key_input_frame, width=230, placeholder_text="Пример: r:MTU5...",
-                                            justify="center")
+        self.entry_key_input = ctk.CTkEntry(self.key_input_frame, width=230, placeholder_text="Base64 ключ...", justify="center")
         self.entry_key_input.pack(side="left", padx=5)
 
         self.btn_paste = ctk.CTkButton(self.key_input_frame, text="Вставить", width=80,
                                        command=self.paste_key_from_clipboard)
         self.btn_paste.pack(side="left")
+
+        self.lbl_pass_dec = ctk.CTkLabel(frame, text="Введите пароль:", font=("Arial", 12, "bold"))
+        self.lbl_pass_dec.pack(pady=(10, 0))
+        self.entry_pass_dec = ctk.CTkEntry(frame, width=250, placeholder_text="Пароль от этого файла", show="*")
+        self.entry_pass_dec.pack(pady=5)
 
         self.btn_run_dec = ctk.CTkButton(frame, text="РАСШИФРОВАТЬ", fg_color="#B22222", hover_color="#DC143C",
                                          width=200, height=40, font=("Arial", 14, "bold"), command=self.run_decrypt)
@@ -144,23 +148,35 @@ class StegoApp(ctk.CTk):
 
     def run_encrypt(self):
         if not self.current_img_path_enc: return
-
+        
         text = self.entry_text.get("0.0", "end-1c")
+        password = self.entry_pass_enc.get()
+        
         if text == self.placeholder_text or not text.strip(): return
+        if not password: 
+            self.entry_pass_enc.configure(border_color="red")
+            return
+        else:
+            self.entry_pass_enc.configure(border_color="gray")
 
         method = self.combo_method_enc.get()
         save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG file", "*.png")])
 
         if save_path:
-            key = engine.encrypt(self.current_img_path_enc, text, save_path, method)
+            if "EOF" in method:
+                length = engine._encrypt_eof(self.current_img_path_enc, text, save_path, password)
+                key = engine._generate_smart_key("eof", length)
+            else:
+                key = engine.encrypt(self.current_img_path_enc, text, password, save_path, method)
 
             self.result_frame.pack(pady=10, fill="x")
             self.lbl_key_info.pack(pady=(0, 5))
             self.key_container.pack(pady=5)
-
             self.entry_key_result.delete(0, "end")
 
-            if key:
+            if key == "TooLarge":
+                self.entry_key_result.insert(0, "Текст слишком большой!")
+            elif key:
                 self.entry_key_result.insert(0, key)
             else:
                 self.entry_key_result.insert(0, "Ошибка")
@@ -169,7 +185,16 @@ class StegoApp(ctk.CTk):
         if not self.current_img_path_dec: return
 
         key = self.entry_key_input.get()
-        result_text = engine.decrypt(self.current_img_path_dec, key)
+        password = self.entry_pass_dec.get()
+        
+        if not key or not password: return
+
+        method_code, length = engine._parse_smart_key(key)
+        
+        if method_code == "eof":
+            result_text = engine._decrypt_eof(self.current_img_path_dec, length, password)
+        else:
+            result_text = engine.decrypt(self.current_img_path_dec, key, password)
 
         self.text_result.delete("0.0", "end")
         self.text_result.insert("0.0", result_text)
