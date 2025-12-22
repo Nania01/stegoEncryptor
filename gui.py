@@ -20,7 +20,7 @@ class StegoApp(ctk.CTk):
         self.placeholder_text = "Введите текст, который хотите зашифровать..."
 
         self.tabview = ctk.CTkTabview(self, width=560, height=650)
-        self.tabview.pack(padx=20, pady=20)
+        self.tabview.pack(padx=20, pady=10)
 
         self.tab_encrypt = self.tabview.add("Зашифровать")
         self.tab_decrypt = self.tabview.add("Расшифровать")
@@ -31,6 +31,12 @@ class StegoApp(ctk.CTk):
     def setup_encrypt_tab(self):
         frame = self.tab_encrypt
 
+        self.btn_clear_enc = ctk.CTkButton(frame, text="✕", width=30, height=30,
+                                   fg_color="#B22222", hover_color="#8B0000",
+                                   font=("Arial", 16, "bold"),
+                                   command=self.clear_encrypt_tab)
+        self.btn_clear_enc.place(relx=0.98, rely=0, anchor="ne")
+        
         self.btn_select_img_enc = ctk.CTkButton(frame, text="Выбрать картинку", command=self.select_image_enc,
                                                 width=200)
         self.btn_select_img_enc.pack(pady=(15, 5))
@@ -85,6 +91,12 @@ class StegoApp(ctk.CTk):
     def setup_decrypt_tab(self):
         frame = self.tab_decrypt
 
+        self.btn_clear_dec = ctk.CTkButton(frame, text="✕", width=30, height=30,
+                                   fg_color="#B22222", hover_color="#8B0000",
+                                   font=("Arial", 16, "bold"),
+                                   command=self.clear_decrypt_tab)
+        self.btn_clear_dec.place(relx=0.98, rely=0, anchor="ne")
+
         self.btn_select_img_dec = ctk.CTkButton(frame, text="Выбрать файл", command=self.select_image_dec, width=200)
         self.btn_select_img_dec.pack(pady=(20, 10))
 
@@ -116,6 +128,32 @@ class StegoApp(ctk.CTk):
 
         self.text_result = ctk.CTkTextbox(frame, width=450, height=180, corner_radius=10)
         self.text_result.pack(pady=10)
+
+  
+
+    def clear_encrypt_tab(self):
+        self.focus() 
+        self.current_img_path_enc = ""
+        self.max_capacity_bits = 0
+        self.lbl_file_enc.configure(text="Файл не выбран")
+        self.entry_pass_enc.delete(0, "end")
+        self.entry_pass_enc.configure(border_color="gray")
+        
+        self.entry_text.delete("0.0", "end")
+        self.on_text_focus_out(None) 
+        
+        self.progress_bar.pack_forget()
+        self.lbl_capacity.pack_forget()
+        self.result_frame.pack_forget()
+        self.entry_key_result.delete(0, "end")
+
+    def clear_decrypt_tab(self):
+        self.focus() 
+        self.current_img_path_dec = ""
+        self.lbl_file_dec.configure(text="Файл не выбран")
+        self.entry_key_input.delete(0, "end")
+        self.entry_pass_dec.delete(0, "end")
+        self.text_result.delete("0.0", "end")
 
     def on_text_focus_in(self, event):
         if self.entry_text.get("0.0", "end-1c") == self.placeholder_text:
@@ -161,7 +199,7 @@ class StegoApp(ctk.CTk):
 
         required_bits = engine.calculate_encrypted_size(text)
 
-        ratio = required_bits / self.max_capacity_bits
+        ratio = required_bits / self.max_capacity_bits if self.max_capacity_bits > 0 else 0
 
         if ratio > 1:
             self.progress_bar.set(1)
