@@ -10,9 +10,14 @@ class StegoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("StegoPic v6.0")
+        self.title("Steganography Tool")
         self.geometry("600x650")
         self.resizable(False, False)
+
+        try:
+            self.iconbitmap("icon.ico")
+        except:
+            pass
 
         self.current_img_path_enc = ""
         self.current_img_path_dec = ""
